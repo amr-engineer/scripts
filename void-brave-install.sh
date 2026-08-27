@@ -41,6 +41,8 @@ else
 fi
 
 "$VOID_PACKAGES_DIR/xbps-src" pkg brave-bin
-$doas xbps-install -y --repository "$PKG_REPO" brave-bin
+$doas xbps-install -y --repository "$PKG_REPO" -ff brave-bin
 
 [ ! -e /usr/local/bin/brave ] && $doas ln -s /opt/brave.com/brave/brave /usr/local/bin/brave
+
+echo "installed! is it there yet? :)"
