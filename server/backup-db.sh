@@ -62,7 +62,7 @@ pg_dump -U postgres -h localhost -Fc -d "$DB_NAME" > "$BACKUP_DIR/$HOURLY_NAME"
 
 DUMP_SIZE=$(stat -c%s "$BACKUP_DIR/$HOURLY_NAME" 2>/dev/null || echo 0)
 
-if [ "$DUMP_SIZE" -eq 2048 ]; then
+if [ "$DUMP_SIZE" -lt 2048 ]; then
     echo "$(date -u): Error: dump is empty or missing" >&2
     exit 1
 fi
