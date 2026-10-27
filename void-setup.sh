@@ -97,10 +97,6 @@ else
 	doas="sudo"
 fi
 
-has_nvidia_gpu() {
-	command -v lspci &> /dev/null && lspci | grep -i nvidia &> /dev/null
-}
-
 # insert <path> <quary> <line>
 insert() {
 	if ! grep -Fq "$2" "$1"; then
@@ -232,28 +228,6 @@ if [ $install_gui -eq 1 ]; then
 	# intel iGPU drivers
 	$doas xbps-install -y mesa-dri intel-video-accel vulkan-loader mesa-vulkan-intel
 
-	if has_nvidia_gpu; then
-		echo "NVIDIA GPU detected. Installing NVIDIA drivers..."
-		$doas xbps-install -y nvidia nvidia-libs-32bit
-
-		# Add nvidia modules to be loaded at boot
-		if ! grep -q "nvidia" /etc/modules-load.d/nvidia.conf 2>/dev/null; then
-			$doas mkdir -p /etc/modules-load.d
-			$doas sh -c 'printf "nvidia\nnvidia_modeset\nnvidia_uvm\nnvidia_drm\n" > /etc/modules-load.d/nvidia.conf'
-		fi
-
-		# Configure Xorg for NVIDIA
-		$doas nvidia-xconfig
-
-		# Add nvidia settings to xinitrc
-		insert $HOME/.xinitrc 'nvidia-settings' 'nvidia-settings --load-config-only &'
-
-		echo "NVIDIA drivers installed. Reboot required for full functionality."
-	else
-		echo "No NVIDIA GPU detected. Skipping NVIDIA driver installation."
-	fi
-
-	# make sure the cache is accessible
     mkdir -p "$HOME/.cache"
 	$doas chown -R $USER:$USER $HOME/.cache/
 
@@ -283,7 +257,3 @@ if [ $install_julia -eq 1 ]; then
 fi
 
 echo "Setup complete!"
-
-if [ $install_gui -eq 1 ] && has_nvidia_gpu; then
-	echo "Note: NVIDIA drivers were installed. Please reboot for full functionality."
-fi
