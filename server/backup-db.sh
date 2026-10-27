@@ -55,7 +55,7 @@ if [ "${#have_daily[@]}" -eq 0 ]; then
 fi
 
 
-RM_LOCAL=0 # only keep local backup if all uploads fail
+RM_LOCAL=1
 trap 'rc=$?; if [ "$RM_LOCAL" -eq 1 ] && [ -n "${HOURLY_NAME:-}" ]; then rm -f "$BACKUP_DIR/$HOURLY_NAME" || true; fi; exit $rc' EXIT
 
 pg_dump -U postgres -h localhost -Fc -d "$DB_NAME" > "$BACKUP_DIR/$HOURLY_NAME"
@@ -81,6 +81,7 @@ LOCAL_MD5=$(md5sum "$BACKUP_DIR/$HOURLY_NAME" | awk '{print $1}')
 LOCAL_MD5_FILE="$BACKUP_DIR/$HOURLY_NAME.md5"
 printf '%s\n' "$LOCAL_MD5" > "$LOCAL_MD5_FILE"
 
+RM_LOCAL=0 # only keep local backup if all uploads fail
 for i in "${!T_SUBDIRS[@]}"; do
 	subdir="${T_SUBDIRS[$i]}"
 	name="${T_NAMES[$i]}"
