@@ -3,9 +3,11 @@ set -euo pipefail
 
 # this script intended to run periodically
 # and should be supervised to detect exit 1
+# Designed to backup PostgreSQL under 4GiB
 
 BACKUP_DIR="/var/backups/pg"
 DB_NAME="main"
+MAX_BYTES=$((4 * 1024 * 1024 * 1024))   # 4GiB (under S3 single-part limit)
 
 # origins - change this :)
 REMOTES=(
@@ -58,14 +60,21 @@ trap 'rc=$?; if [ "$RM_LOCAL" -eq 1 ] && [ -n "${HOURLY_NAME:-}" ]; then rm -f "
 
 pg_dump -U postgres -h localhost -Fc -d "$DB_NAME" > "$BACKUP_DIR/$HOURLY_NAME"
 
-if [ ! -s "$BACKUP_DIR/$HOURLY_NAME" ]; then
-	echo "$(date -u): Error: dump is empty" >&2
-	exit 1
+DUMP_SIZE=$(stat -c%s "$DUMP_PATH" 2>/dev/null || echo 0)
+
+if [ "$DUMP_SIZE" -eq 2048 ]; then
+    echo "$(date -u): Error: dump is empty or missing" >&2
+    exit 1
 fi
 
-if ! pg_restore --list "$BACKUP_DIR/$HOURLY_NAME" > /dev/null 2>&1; then
-	echo "$(date -u): Error: dump is not restorable" >&2
-	exit 1
+if [ "$DUMP_SIZE" -gt "$MAX_BYTES" ]; then
+    echo "$(date -u): Error: dump syze $DUMP_SIZE bytes exceeds limit $MAX_BYTES" >&2
+    exit 1
+fi
+
+if ! pg_restore --list "$DUMP_PATH" > /dev/null 2>&1; then
+    echo "$(date -u): Error: dump is not restorable" >&2
+    exit 1
 fi
 
 LOCAL_MD5=$(md5sum "$BACKUP_DIR/$HOURLY_NAME" | awk '{print $1}')
