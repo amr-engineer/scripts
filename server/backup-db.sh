@@ -56,7 +56,7 @@ fi
 
 
 RM_LOCAL=1
-trap 'rc=$?; if [ "$RM_LOCAL" -eq 1 ] && [ -n "${HOURLY_NAME:-}" ]; then rm -f "$BACKUP_DIR/$HOURLY_NAME" || true; fi; exit $rc' EXIT
+trap 'rc=$?; if [ "$RM_LOCAL" -eq 1 ] && [ -n "${HOURLY_NAME:-}" ]; then rm -f "$BACKUP_DIR/$HOURLY_NAME" "$BACKUP_DIR/$HOURLY_NAME.md5" || true; fi; exit $rc' EXIT
 
 pg_dump -U postgres -h localhost -Fc -d "$DB_NAME" > "$BACKUP_DIR/$HOURLY_NAME"
 
