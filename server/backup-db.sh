@@ -60,7 +60,7 @@ trap 'rc=$?; if [ "$RM_LOCAL" -eq 1 ] && [ -n "${HOURLY_NAME:-}" ]; then rm -f "
 
 pg_dump -U postgres -h localhost -Fc -d "$DB_NAME" > "$BACKUP_DIR/$HOURLY_NAME"
 
-DUMP_SIZE=$(stat -c%s "$DUMP_PATH" 2>/dev/null || echo 0)
+DUMP_SIZE=$(stat -c%s "$BACKUP_DIR/$HOURLY_NAME" 2>/dev/null || echo 0)
 
 if [ "$DUMP_SIZE" -eq 2048 ]; then
     echo "$(date -u): Error: dump is empty or missing" >&2
@@ -72,7 +72,7 @@ if [ "$DUMP_SIZE" -gt "$MAX_BYTES" ]; then
     exit 1
 fi
 
-if ! pg_restore --list "$DUMP_PATH" > /dev/null 2>&1; then
+if ! pg_restore --list "$BACKUP_DIR/$HOURLY_NAME" > /dev/null 2>&1; then
     echo "$(date -u): Error: dump is not restorable" >&2
     exit 1
 fi
