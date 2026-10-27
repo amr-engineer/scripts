@@ -21,6 +21,9 @@ TODAY=${TIMESTAMP%%_*}  # YYYYMMDD prefix of TIMESTAMP
 DAILY_NAME="${DB_NAME}_${TODAY}.dump"
 HOURLY_NAME="${DB_NAME}_${TIMESTAMP}.dump"
 
+exec 9>"$BACKUP_DIR/.lock"
+flock -n 9 || { echo "a backup task already running" >&2; exit 1; }
+
 have_daily=()
 missing_daily=()
 for remote in "${REMOTES[@]}"; do
