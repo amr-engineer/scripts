@@ -97,6 +97,7 @@ for i in "${!T_SUBDIRS[@]}"; do
 		else
 			echo "$(date -u): Error - $dest checksum mismatch for $name" >&2
 			ALL_OK=0
+			continue
 		fi
 		if ! rclone copyto "$LOCAL_MD5_FILE" "$dest/$name.md5"; then
 			echo "$(date -u): Error - $dest upload failed for $name.md5" >&2
