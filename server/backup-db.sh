@@ -78,8 +78,7 @@ if ! pg_restore --list "$BACKUP_DIR/$HOURLY_NAME" > /dev/null 2>&1; then
 fi
 
 LOCAL_MD5=$(md5sum "$BACKUP_DIR/$HOURLY_NAME" | awk '{print $1}')
-LOCAL_MD5_FILE="$BACKUP_DIR/$HOURLY_NAME.md5"
-printf '%s\n' "$LOCAL_MD5" > "$LOCAL_MD5_FILE"
+printf '%s\n' "$LOCAL_MD5" > "$BACKUP_DIR/$HOURLY_NAME.md5"
 
 RM_LOCAL=0 # only keep local backup if all uploads fail
 for i in "${!T_SUBDIRS[@]}"; do
@@ -100,7 +99,7 @@ for i in "${!T_SUBDIRS[@]}"; do
 			ALL_OK=0
 			continue
 		fi
-		if ! rclone copyto "$LOCAL_MD5_FILE" "$dest/$name.md5"; then
+		if ! rclone copyto "$BACKUP_DIR/$HOURLY_NAME.md5" "$dest/$name.md5"; then
 			echo "$(date -u): Error - $dest upload failed for $name.md5" >&2
 		else
 			echo "$(date -u): $name fully uploaded to $dest"
