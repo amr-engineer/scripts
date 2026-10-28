@@ -2,7 +2,7 @@
 set -euo pipefail
 export TZ=UTC0
 
-# Designed to backup PostgreSQL under 4GiB
+# Designed to backup PostgreSQL under 4GiB to S3-compatible
 
 BACKUP_DIR="/var/backups/pg"
 DB_NAME="main"
