@@ -20,7 +20,7 @@ FILE_NAME="${DB_NAME}_${TIMESTAMP}.dump"
 mkdir -p "$BACKUP_DIR" || { echo "$(date -u): Error: cannot create $BACKUP_DIR" >&2; exit 1; }
 
 exec 9>"$BACKUP_DIR/.lock"
-flock -n 9 || { echo "a backup task already running" >&2; exit 1; }
+flock -n 9 || { echo "Error: a backup task already running" >&2; exit 1; }
 
 RM_LOCAL=1
 trap 'rc=$?; if [ "$RM_LOCAL" -eq 1 ] && [ -n "${FILE_NAME:-}" ]; then rm -f "$BACKUP_DIR/$FILE_NAME" "$BACKUP_DIR/$FILE_NAME.md5" || true; fi; exit $rc' EXIT
