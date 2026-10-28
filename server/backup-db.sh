@@ -21,6 +21,8 @@ TODAY=${TIMESTAMP%%_*}  # YYYYMMDD prefix of TIMESTAMP
 DAILY_NAME="${DB_NAME}_${TODAY}.dump"
 HOURLY_NAME="${DB_NAME}_${TIMESTAMP}.dump"
 
+mkdir -p "$BACKUP_DIR" || { echo "$(date -u): Error: cannot create $BACKUP_DIR" >&2; exit 1; }
+
 exec 9>"$BACKUP_DIR/.lock"
 flock -n 9 || { echo "a backup task already running" >&2; exit 1; }
 
@@ -46,8 +48,6 @@ if [ "${#have_daily[@]}" -gt 0 ] && [ "${#missing_daily[@]}" -gt 0 ]; then
 		fi
 	done
 fi
-
-mkdir -p "$BACKUP_DIR" || { echo "$(date -u): Error: cannot create $BACKUP_DIR" >&2; exit 1; }
 
 T_SUBDIRS=("hourly")
 T_NAMES=("$HOURLY_NAME")
