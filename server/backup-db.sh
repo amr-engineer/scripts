@@ -54,7 +54,7 @@ printf '%s\n' "$LOCAL_MD5" > "$BACKUP_DIR/$FILE_NAME.md5"
 OK_COUNT=0
 for remote in "${REMOTES[@]}"; do
 	dest="$remote/manual"
-	if ! rclone copyto "$BACKUP_DIR/$FILE_NAME" "$dest/$FILE_NAME"; then
+	if ! rclone copyto "$BACKUP_DIR/$FILE_NAME" "$dest/$FILE_NAME" --s3-upload-cutoff=5G; then
 		err "Error: $dest upload failed for $FILE_NAME"
 		continue
 	fi
