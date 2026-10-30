@@ -79,6 +79,6 @@ if [ "$OK_COUNT" -ne "${#REMOTES[@]}" ]; then
 	exit 1
 fi
 
-log "All targets verified on all ${#REMOTES[@]} origins"
+log "All targets verified on all ${#REMOTES[@]} remotes"
 log "Note: $( [ "$RM_LOCAL" -eq 1 ] && echo removing || echo keeping ) local backup"
 exit 0
