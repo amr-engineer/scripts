@@ -65,7 +65,7 @@ for remote in "${REMOTES[@]}"; do
 		continue
 	fi
 
-	log"$FILE_NAME uploaded, SHA-256 verified by s3://${BUCKET}/${KEY}"
+	log "$FILE_NAME uploaded, SHA-256 verified by s3://${BUCKET}/${KEY}"
 	OK_COUNT=$((OK_COUNT + 1))
 done
 
