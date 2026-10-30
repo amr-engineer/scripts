@@ -1,14 +1,18 @@
 #!/bin/bash
 set -euo pipefail
 export TZ=UTC0
+export AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED
+export AWS_CLI_CONNECT_TIMEOUT=10
+export AWS_CLI_READ_TIMEOUT=60
 
-# Designed to backup PostgreSQL under 4GiB to S3-compatible
+# Designed to backup PostgreSQL to S3-compatible
 
+UPLOAD_TIMEOUT="1h"
 BACKUP_DIR="/var/backups/pg"
 DB_NAME="main"
-MAX_BYTES=$((4 * 1024 * 1024 * 1024))   # 4GiB (under S3 single-part limit)
 
 # origins - change this :)
+# left side to the colon are profiles from ~/.aws/config
 REMOTES=(
 	"r2:eu-backup"
 	"r2:us-backup"
@@ -27,7 +31,7 @@ exec 9>"$BACKUP_DIR/.lock"
 flock -n 9 || { echo "Error: a backup task already running" >&2; exit 1; }
 
 RM_LOCAL=1
-trap 'rc=$?; if [ "$RM_LOCAL" -eq 1 ] && [ -n "${FILE_NAME:-}" ]; then rm -f "$BACKUP_DIR/$FILE_NAME" "$BACKUP_DIR/$FILE_NAME.md5" || true; fi; exit $rc' EXIT
+trap 'rc=$?; if [ "$RM_LOCAL" -eq 1 ] && [ -n "${FILE_NAME:-}" ]; then rm -f "$BACKUP_DIR/$FILE_NAME" || true; fi; exit $rc' EXIT
 
 pg_dump -U postgres -h localhost -Fc -d "$DB_NAME" > "$BACKUP_DIR/$FILE_NAME"
 
@@ -38,39 +42,31 @@ if [ "$DUMP_SIZE" -lt 2048 ]; then
 	exit 1
 fi
 
-if [ "$DUMP_SIZE" -gt "$MAX_BYTES" ]; then
-	err "Error: dump size $DUMP_SIZE bytes exceeds limit $MAX_BYTES"
-	exit 1
-fi
-
 if ! pg_restore --list "$BACKUP_DIR/$FILE_NAME" > /dev/null 2>&1; then
 	err "Error: dump is not restorable"
 	exit 1
 fi
 
-LOCAL_MD5=$(md5sum "$BACKUP_DIR/$FILE_NAME" | awk '{print $1}')
-printf '%s\n' "$LOCAL_MD5" > "$BACKUP_DIR/$FILE_NAME.md5"
-
 OK_COUNT=0
-RM_LOCAL=0
 for remote in "${REMOTES[@]}"; do
-	dest="$remote/manual"
-	if ! rclone copyto "$BACKUP_DIR/$FILE_NAME" "$dest/$FILE_NAME" --s3-upload-cutoff=5G; then
-		err "Error: $dest upload failed for $FILE_NAME"
+	PROFILE="${remote%%:*}"
+	BUCKET="${remote#*:}"
+	KEY="manual/${FILE_NAME}"
+
+	log "Uploading to s3://${BUCKET}/${KEY} (profile: ${PROFILE})"
+
+	if ! timeout --signal=TERM --kill-after=30s $UPLOAD_TIMEOUT \
+		aws s3 cp "$BACKUP_DIR/$FILE_NAME" "s3://${BUCKET}/${KEY}" \
+		--profile "$PROFILE" \
+		--checksum-algorithm SHA256 \
+		--no-progress; then
+		err "Error: upload failed to s3://${BUCKET}/${KEY}"
+		RM_LOCAL=0
 		continue
 	fi
-	REMOTE_MD5=$(rclone hashsum md5 "$dest/$FILE_NAME" 2>/dev/null | awk '{print $1}' || true)
-	if [ -z "$REMOTE_MD5" ] || [ "$REMOTE_MD5" != "$LOCAL_MD5" ]; then
-		err "Error: $dest checksum mismatch for $FILE_NAME"
-		continue
-	fi
-	if ! rclone copyto "$BACKUP_DIR/$FILE_NAME.md5" "$dest/$FILE_NAME.md5"; then
-		err "Error: $dest upload failed for $FILE_NAME.md5"
-		continue
-	fi
-	log "$FILE_NAME fully uploaded to $dest"
+
+	log"$FILE_NAME uploaded, SHA-256 verified by s3://${BUCKET}/${KEY}"
 	OK_COUNT=$((OK_COUNT + 1))
-	RM_LOCAL=1
 done
 
 if [ "$OK_COUNT" -ne "${#REMOTES[@]}" ]; then
